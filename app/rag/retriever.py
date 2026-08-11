@@ -21,26 +21,28 @@ class Retriever:
         self.vector_store = vector_store
 
     def retrieve(self, query, k=5):
-        """
-        Retrieve the top-k most relevant chunks.
+    """
+    Retrieve the most relevant document chunks.
+    """
 
-        Args:
-            query (str): User question
-            k (int): Number of chunks to retrieve
-
-        Returns:
-            list[Document]
-        """
-
-        if not query.strip():
-            raise ValueError(
-                "Query cannot be empty."
-            )
-
-        return self.vector_store.similarity_search(
-            query=query,
-            k=k
+    if not query.strip():
+        raise ValueError(
+            "Query cannot be empty."
         )
+
+    results = self.vector_store.similarity_search_with_score(
+        query=query,
+        k=k
+    )
+
+    # Keep only reasonably relevant results
+    filtered_results = [
+        doc
+        for doc, score in results
+        if score < 1.2
+    ]
+
+    return filtered_results
 
     def retrieve_with_scores(self, query, k=5):
         """
