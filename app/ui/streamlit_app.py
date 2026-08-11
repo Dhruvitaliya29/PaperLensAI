@@ -169,7 +169,7 @@ if st.button("Ask"):
 
                 response = pipeline.ask(
                     question,
-                    k=10
+                    k=5
                 )
 
 
