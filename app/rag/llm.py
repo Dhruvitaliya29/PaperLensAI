@@ -15,11 +15,17 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
 
-# Load variables from .env for local development
+# ---------------------------------------------------------
+# Load environment variables
+# ---------------------------------------------------------
+
 load_dotenv()
 
 
 class LLM:
+    """
+    Handles communication with the Groq LLM.
+    """
 
     def __init__(
         self,
@@ -27,34 +33,45 @@ class LLM:
         temperature=0,
     ):
 
-        # --------------------------------------------------
-        # Get Groq API Key
-        # --------------------------------------------------
+        # -------------------------------------------------
+        # Get API key from Streamlit Secrets
+        # -------------------------------------------------
 
-        # First try Streamlit Cloud Secrets
         try:
-            api_key = st.secrets.get("GROQ_API_KEY")
+            api_key = st.secrets.get(
+                "GROQ_API_KEY"
+            )
         except Exception:
             api_key = None
 
-        # If not found, try local .env
-        if not api_key:
-            api_key = os.getenv("GROQ_API_KEY")
 
-        # --------------------------------------------------
-        # Validate API Key
-        # --------------------------------------------------
+        # -------------------------------------------------
+        # Fallback to local .env
+        # -------------------------------------------------
 
         if not api_key:
+
+            api_key = os.getenv(
+                "GROQ_API_KEY"
+            )
+
+
+        # -------------------------------------------------
+        # Validate API key
+        # -------------------------------------------------
+
+        if not api_key:
+
             raise ValueError(
                 "GROQ_API_KEY not found. "
-                "Add GROQ_API_KEY to Streamlit Secrets "
+                "Add it to Streamlit Secrets "
                 "or your local .env file."
             )
 
-        # --------------------------------------------------
-        # Initialize Groq LLM
-        # --------------------------------------------------
+
+        # -------------------------------------------------
+        # Initialize Groq
+        # -------------------------------------------------
 
         self.llm = ChatGroq(
             groq_api_key=api_key,
@@ -62,23 +79,39 @@ class LLM:
             temperature=temperature,
         )
 
-    # ------------------------------------------------------
+
+    # -----------------------------------------------------
     # Generate Answer
-    # ------------------------------------------------------
+    # -----------------------------------------------------
 
-    def generate_answer(self, question, documents):
+    def generate_answer(
+        self,
+        question,
+        documents
+    ):
+        """
+        Generate a grounded answer using
+        the retrieved document chunks.
+        """
 
-        # Combine retrieved documents into context
+        # -------------------------------------------------
+        # Build context
+        # -------------------------------------------------
+
         context = "\n\n".join(
-            [doc.page_content for doc in documents]
+            [
+                doc.page_content
+                for doc in documents
+            ]
         )
 
-        # --------------------------------------------------
-        # Prompt
-        # --------------------------------------------------
 
-       prompt = ChatPromptTemplate.from_template(
-    """
+        # -------------------------------------------------
+        # Prompt
+        # -------------------------------------------------
+
+        prompt = ChatPromptTemplate.from_template(
+            """
 You are an AI research assistant analyzing uploaded research papers.
 
 Answer the user's question using ONLY the provided context.
@@ -103,25 +136,35 @@ IMPORTANT RULES:
    - masked/causal self-attention
    - bidirectional attention
 
+--------------------------------------------------
+
 Context:
+
 {context}
 
+--------------------------------------------------
+
 Question:
+
 {question}
+
+--------------------------------------------------
 
 Answer:
 """
-)
+        )
 
-        # --------------------------------------------------
-        # Create LangChain Chain
-        # --------------------------------------------------
+
+        # -------------------------------------------------
+        # Create LangChain chain
+        # -------------------------------------------------
 
         chain = prompt | self.llm
 
-        # --------------------------------------------------
-        # Generate Response
-        # --------------------------------------------------
+
+        # -------------------------------------------------
+        # Generate response
+        # -------------------------------------------------
 
         response = chain.invoke(
             {
@@ -129,5 +172,6 @@ Answer:
                 "question": question,
             }
         )
+
 
         return response.content
