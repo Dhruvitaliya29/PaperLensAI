@@ -210,7 +210,7 @@ if st.button("Ask"):
                 # Retrieve top 5 relevant chunks
                 response = pipeline.ask(
                     question,
-                    k=5
+                    k=10
                 )
 
 
