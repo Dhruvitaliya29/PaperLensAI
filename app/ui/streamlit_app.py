@@ -10,11 +10,18 @@ import streamlit as st
 
 from app.rag.rag_pipeline import RAGPipeline
 
+
 UPLOAD_FOLDER = "data/uploads"
 VECTOR_FOLDER = "data/vectorstore"
 
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(VECTOR_FOLDER, exist_ok=True)
+
+
+# ---------------------------------------------------------
+# Streamlit Configuration
+# ---------------------------------------------------------
 
 st.set_page_config(
     page_title="PaperLens AI",
@@ -22,13 +29,24 @@ st.set_page_config(
     layout="wide"
 )
 
+
 st.title("📚 PaperLens AI")
 st.write("AI Powered Research Assistant using RAG")
+
+
+# ---------------------------------------------------------
+# Initialize Pipeline
+# ---------------------------------------------------------
 
 if "pipeline" not in st.session_state:
     st.session_state.pipeline = RAGPipeline()
 
 pipeline = st.session_state.pipeline
+
+
+# ---------------------------------------------------------
+# Upload Research Papers
+# ---------------------------------------------------------
 
 uploaded_files = st.file_uploader(
     "Upload Research Papers",
@@ -36,9 +54,58 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True
 )
 
+
+# ---------------------------------------------------------
+# Index Documents
+# ---------------------------------------------------------
+
 if st.button("Index Documents"):
 
-    if uploaded_files:
+    if not uploaded_files:
+
+        st.warning("Please upload at least one PDF.")
+
+    else:
+
+        # -----------------------------------------------
+        # Remove OLD uploaded PDFs
+        # -----------------------------------------------
+
+        for filename in os.listdir(UPLOAD_FOLDER):
+
+            file_path = os.path.join(
+                UPLOAD_FOLDER,
+                filename
+            )
+
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+
+
+        # -----------------------------------------------
+        # Remove OLD FAISS vector store
+        # -----------------------------------------------
+
+        for filename in os.listdir(VECTOR_FOLDER):
+
+            file_path = os.path.join(
+                VECTOR_FOLDER,
+                filename
+            )
+
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+
+
+        # -----------------------------------------------
+        # Save NEW uploaded PDFs
+        # -----------------------------------------------
 
         for file in uploaded_files:
 
@@ -50,47 +117,99 @@ if st.button("Index Documents"):
             with open(save_path, "wb") as f:
                 shutil.copyfileobj(file, f)
 
+
+        # -----------------------------------------------
+        # Create NEW FAISS index
+        # -----------------------------------------------
+
         with st.spinner("Indexing documents..."):
 
-            pipeline.index_documents(UPLOAD_FOLDER)
+            pipeline.index_documents(
+                UPLOAD_FOLDER
+            )
 
-            pipeline.save_vector_store(VECTOR_FOLDER)
+            pipeline.save_vector_store(
+                VECTOR_FOLDER
+            )
 
-        st.success("Documents Indexed Successfully!")
+
+        st.success(
+            "Documents Indexed Successfully!"
+        )
+
+
+# ---------------------------------------------------------
+# Ask Question
+# ---------------------------------------------------------
 
 question = st.text_input(
     "Ask a Question"
 )
 
+
 if st.button("Ask"):
 
-    if question.strip():
+    if not question.strip():
 
-        pipeline.load_vector_store(VECTOR_FOLDER)
+        st.warning(
+            "Please enter a question."
+        )
 
-        with st.spinner("Generating Answer..."):
+    else:
 
-            response = pipeline.ask(question, k=10)
+        try:
 
-        st.subheader("Answer")
-
-        st.write(response["answer"])
-
-        st.subheader("Sources")
-
-        shown = set()
-
-        for source in response["sources"]:
-
-            key = (
-                source["source"],
-                source["page"]
+            pipeline.load_vector_store(
+                VECTOR_FOLDER
             )
 
-            if key not in shown:
+            with st.spinner(
+                "Generating Answer..."
+            ):
 
-                shown.add(key)
-
-                st.write(
-                    f"📄 {source['source']} (Page {source['page']})"
+                response = pipeline.ask(
+                    question,
+                    k=10
                 )
+
+
+            # -------------------------------------------
+            # Answer
+            # -------------------------------------------
+
+            st.subheader("Answer")
+
+            st.write(
+                response["answer"]
+            )
+
+
+            # -------------------------------------------
+            # Sources
+            # -------------------------------------------
+
+            st.subheader("Sources")
+
+            shown = set()
+
+            for source in response["sources"]:
+
+                key = (
+                    source["source"],
+                    source["page"]
+                )
+
+                if key not in shown:
+
+                    shown.add(key)
+
+                    st.write(
+                        f"📄 {source['source']} "
+                        f"(Page {source['page']})"
+                    )
+
+        except Exception as e:
+
+            st.error(
+                f"Error while generating answer: {e}"
+            )
