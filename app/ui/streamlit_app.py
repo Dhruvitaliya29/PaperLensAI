@@ -39,10 +39,27 @@ st.write("AI Powered Research Assistant using RAG")
 # ---------------------------------------------------------
 
 if "pipeline" not in st.session_state:
+
     st.session_state.pipeline = RAGPipeline()
 
-pipeline = st.session_state.pipeline
+    # Load previously saved FAISS index
+    index_path = os.path.join(
+        VECTOR_FOLDER,
+        "index.faiss"
+    )
 
+    if os.path.exists(index_path):
+
+        try:
+            st.session_state.pipeline.load_vector_store(
+                VECTOR_FOLDER
+            )
+
+        except Exception:
+            pass
+
+
+pipeline = st.session_state.pipeline
 
 # ---------------------------------------------------------
 # Upload Research Papers
