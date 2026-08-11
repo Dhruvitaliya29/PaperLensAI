@@ -1,8 +1,13 @@
 import sys
 from pathlib import Path
 
+# ---------------------------------------------------------
+# Add project root to Python path
+# ---------------------------------------------------------
+
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT_DIR))
+
 
 import os
 import shutil
@@ -11,9 +16,12 @@ import streamlit as st
 from app.rag.rag_pipeline import RAGPipeline
 
 
+# ---------------------------------------------------------
+# Folders
+# ---------------------------------------------------------
+
 UPLOAD_FOLDER = "data/uploads"
 VECTOR_FOLDER = "data/vectorstore"
-
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(VECTOR_FOLDER, exist_ok=True)
@@ -51,15 +59,20 @@ if "pipeline" not in st.session_state:
     if os.path.exists(index_path):
 
         try:
+
             st.session_state.pipeline.load_vector_store(
                 VECTOR_FOLDER
             )
 
-        except Exception:
-            pass
+        except Exception as e:
+
+            st.warning(
+                f"Could not load existing vector store: {e}"
+            )
 
 
 pipeline = st.session_state.pipeline
+
 
 # ---------------------------------------------------------
 # Upload Research Papers
@@ -80,13 +93,15 @@ if st.button("Index Documents"):
 
     if not uploaded_files:
 
-        st.warning("Please upload at least one PDF.")
+        st.warning(
+            "Please upload at least one PDF."
+        )
 
     else:
 
-        # -----------------------------------------------
+        # -------------------------------------------------
         # Remove OLD uploaded PDFs
-        # -----------------------------------------------
+        # -------------------------------------------------
 
         for filename in os.listdir(UPLOAD_FOLDER):
 
@@ -96,15 +111,17 @@ if st.button("Index Documents"):
             )
 
             if os.path.isfile(file_path):
+
                 os.remove(file_path)
 
             elif os.path.isdir(file_path):
+
                 shutil.rmtree(file_path)
 
 
-        # -----------------------------------------------
+        # -------------------------------------------------
         # Remove OLD FAISS vector store
-        # -----------------------------------------------
+        # -------------------------------------------------
 
         for filename in os.listdir(VECTOR_FOLDER):
 
@@ -114,15 +131,17 @@ if st.button("Index Documents"):
             )
 
             if os.path.isfile(file_path):
+
                 os.remove(file_path)
 
             elif os.path.isdir(file_path):
+
                 shutil.rmtree(file_path)
 
 
-        # -----------------------------------------------
+        # -------------------------------------------------
         # Save NEW uploaded PDFs
-        # -----------------------------------------------
+        # -------------------------------------------------
 
         for file in uploaded_files:
 
@@ -132,16 +151,22 @@ if st.button("Index Documents"):
             )
 
             with open(save_path, "wb") as f:
-                shutil.copyfileobj(file, f)
+
+                shutil.copyfileobj(
+                    file,
+                    f
+                )
 
 
-        # -----------------------------------------------
+        # -------------------------------------------------
         # Create NEW FAISS index
-        # -----------------------------------------------
+        # -------------------------------------------------
 
-        with st.spinner("Indexing documents..."):
+        with st.spinner(
+            "Indexing documents..."
+        ):
 
-            pipeline.index_documents(
+            result = pipeline.index_documents(
                 UPLOAD_FOLDER
             )
 
@@ -151,7 +176,9 @@ if st.button("Index Documents"):
 
 
         st.success(
-            "Documents Indexed Successfully!"
+            f"Documents Indexed Successfully! "
+            f"Loaded {result['documents']} documents "
+            f"and created {result['chunks']} chunks."
         )
 
 
@@ -176,23 +203,20 @@ if st.button("Ask"):
 
         try:
 
-            pipeline.load_vector_store(
-                VECTOR_FOLDER
-            )
-
             with st.spinner(
                 "Generating Answer..."
             ):
 
+                # Retrieve top 5 relevant chunks
                 response = pipeline.ask(
                     question,
                     k=5
                 )
 
 
-            # -------------------------------------------
+            # -------------------------------------------------
             # Answer
-            # -------------------------------------------
+            # -------------------------------------------------
 
             st.subheader("Answer")
 
@@ -201,9 +225,9 @@ if st.button("Ask"):
             )
 
 
-            # -------------------------------------------
+            # -------------------------------------------------
             # Sources
-            # -------------------------------------------
+            # -------------------------------------------------
 
             st.subheader("Sources")
 
@@ -224,6 +248,7 @@ if st.button("Ask"):
                         f"📄 {source['source']} "
                         f"(Page {source['page']})"
                     )
+
 
         except Exception as e:
 
