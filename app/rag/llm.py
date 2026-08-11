@@ -44,33 +44,28 @@ class LLM:
         except Exception:
             api_key = None
 
-
         # -------------------------------------------------
         # Fallback to local .env
         # -------------------------------------------------
 
         if not api_key:
-
             api_key = os.getenv(
                 "GROQ_API_KEY"
             )
-
 
         # -------------------------------------------------
         # Validate API key
         # -------------------------------------------------
 
         if not api_key:
-
             raise ValueError(
                 "GROQ_API_KEY not found. "
-                "Add it to Streamlit Secrets "
+                "Add GROQ_API_KEY to Streamlit Secrets "
                 "or your local .env file."
             )
 
-
         # -------------------------------------------------
-        # Initialize Groq
+        # Initialize Groq LLM
         # -------------------------------------------------
 
         self.llm = ChatGroq(
@@ -78,7 +73,6 @@ class LLM:
             model_name=model_name,
             temperature=temperature,
         )
-
 
     # -----------------------------------------------------
     # Generate Answer
@@ -95,16 +89,36 @@ class LLM:
         """
 
         # -------------------------------------------------
-        # Build context
+        # Build context with source information
         # -------------------------------------------------
 
-        context = "\n\n".join(
-            [
-                doc.page_content
-                for doc in documents
-            ]
-        )
+        context_parts = []
 
+        for doc in documents:
+
+            source = doc.metadata.get(
+                "source",
+                "Unknown"
+            )
+
+            page = doc.metadata.get(
+                "page",
+                "N/A"
+            )
+
+            context_parts.append(
+                f"""
+Source: {source}
+Page: {page}
+
+Content:
+{doc.page_content}
+"""
+            )
+
+        context = "\n\n".join(
+            context_parts
+        )
 
         # -------------------------------------------------
         # Prompt
@@ -112,55 +126,87 @@ class LLM:
 
         prompt = ChatPromptTemplate.from_template(
             """
-You are an AI research assistant analyzing uploaded research papers.
+You are an AI research assistant analyzing
+uploaded research papers.
 
-Answer the user's question using ONLY the provided context.
+Your job is to answer the user's question using
+ONLY the provided context.
 
 IMPORTANT RULES:
 
 1. Do not use outside knowledge.
-2. Do not invent or assume facts.
-3. If the context contains information from multiple papers,
-   keep each paper's claims clearly separated.
-4. Only compare papers when the user explicitly asks for a comparison.
-5. Do not attribute information from one paper to another.
-6. If the context does not contain enough information, say:
-   "The uploaded papers do not provide enough information to answer this."
-7. For technical questions, preserve the exact meaning of the papers.
-8. Never infer that two architectures are identical just because
-   one paper is based on another.
-9. When discussing an architecture, distinguish between:
-   - encoder
-   - decoder
-   - self-attention
-   - masked/causal self-attention
-   - bidirectional attention
+
+2. Do not invent facts that are unsupported
+   by the provided context.
+
+3. You MAY synthesize information from multiple
+   retrieved chunks when those chunks belong to
+   the same research paper.
+
+4. If the question asks for a paper's
+   "main contribution", infer the contribution
+   from the paper's described:
+   - motivation
+   - objective
+   - proposed method
+   - methodology
+   - results
+
+   You may combine these pieces when they
+   collectively support the conclusion.
+
+5. Clearly distinguish between:
+   - information explicitly stated in the paper
+   - conclusions reasonably synthesized from
+     the provided context
+
+6. If the user asks to compare multiple papers,
+   keep each claim associated with the correct paper.
+
+7. Do not attribute information from one paper
+   to another paper.
+
+8. If the retrieved context genuinely does not
+   contain enough information, say:
+
+   "The provided context does not contain enough
+   information to answer this reliably."
+
+9. Do not refuse to answer merely because the
+   exact phrase "main contribution" is not present.
+   Use the relevant information from the retrieved
+   chunks to produce a grounded synthesis.
+
+10. Prefer precise technical explanations over
+    generic summaries.
+
+11. When possible, mention the paper title,
+    authors, method, and contribution only when
+    those details are supported by the context.
 
 --------------------------------------------------
 
-Context:
+PROVIDED CONTEXT:
 
 {context}
 
 --------------------------------------------------
 
-Question:
+QUESTION:
 
 {question}
 
 --------------------------------------------------
 
-Answer:
+ANSWER:
 """
         )
-
 
         # -------------------------------------------------
         # Create LangChain chain
         # -------------------------------------------------
 
         chain = prompt | self.llm
-
 
         # -------------------------------------------------
         # Generate response
@@ -172,6 +218,5 @@ Answer:
                 "question": question,
             }
         )
-
 
         return response.content
