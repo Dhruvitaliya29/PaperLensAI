@@ -1,7 +1,7 @@
 """
 Text Splitter Module
 
-Splits LangChain Documents into smaller chunks
+Splits LangChain Documents into meaningful chunks
 while preserving metadata.
 """
 
@@ -10,13 +10,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class TextSplitter:
     """
-    Splits documents into chunks for RAG.
+    Splits research papers into chunks for RAG.
     """
 
     def __init__(
         self,
-        chunk_size=1000,
-        chunk_overlap=200,
+        chunk_size=1500,
+        chunk_overlap=300,
     ):
 
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -33,14 +33,18 @@ class TextSplitter:
 
     def split_documents(self, documents):
         """
-        Split LangChain documents into chunks.
+        Split LangChain Documents into chunks.
         """
 
-        return self.text_splitter.split_documents(documents)
+        return self.text_splitter.split_documents(
+            documents
+        )
 
     def split_text(self, text):
         """
-        Split raw text.
+        Split raw text into chunks.
         """
 
-        return self.text_splitter.split_text(text)
+        return self.text_splitter.split_text(
+            text
+        )
