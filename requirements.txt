@@ -10,6 +10,7 @@ sentence-transformers
 transformers
 torch
 pymupdf
+pypdf
 python-dotenv
 fastapi
 pydantic
