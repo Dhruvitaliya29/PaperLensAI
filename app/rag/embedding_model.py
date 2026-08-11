@@ -9,28 +9,37 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 class EmbeddingModel:
     """
-    Singleton wrapper around HuggingFaceEmbeddings.
+    Wrapper around HuggingFaceEmbeddings.
 
-    The embedding model is loaded only once and reused
-    throughout the application.
+    Uses a stronger embedding model for semantic
+    retrieval of research papers.
     """
 
     _embedding_model = None
 
     def __init__(
         self,
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+        model_name="BAAI/bge-base-en-v1.5"
     ):
 
         if EmbeddingModel._embedding_model is None:
 
-            print(f"Loading embedding model: {model_name}")
-
-            EmbeddingModel._embedding_model = HuggingFaceEmbeddings(
-                model_name=model_name
+            print(
+                f"Loading embedding model: {model_name}"
             )
 
-            print("Embedding model loaded successfully.")
+            EmbeddingModel._embedding_model = (
+                HuggingFaceEmbeddings(
+                    model_name=model_name,
+                    encode_kwargs={
+                        "normalize_embeddings": True
+                    }
+                )
+            )
+
+            print(
+                "Embedding model loaded successfully."
+            )
 
     def get_model(self):
         """
